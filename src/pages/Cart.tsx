@@ -125,7 +125,7 @@ export default function Cart() {
                   <span className="font-medium text-natural-dark dark:text-natural-light">TZS {total.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>VAT (18%)</span>
+                  <span>VAT (20%)</span>
                   <span className="font-medium text-natural-dark dark:text-natural-light">TZS {tax.toLocaleString()}</span>
                 </div>
                 <div className="pt-2 border-t border-natural-cream dark:border-white/10 flex justify-between font-bold text-lg text-natural-dark dark:text-natural-accent">
