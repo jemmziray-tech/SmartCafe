@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Coffee, ShoppingBag, User as UserIcon, Moon, Sun, Shield } from 'lucide-react';
+import { Home, Coffee, ShoppingBag, User as UserIcon, Moon, Sun, Shield, CheckCircle2 } from 'lucide-react';
 import { useStore } from '../store';
 import { motion, AnimatePresence } from 'motion/react';
 import clsx from 'clsx';
@@ -8,7 +8,17 @@ import clsx from 'clsx';
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isDarkMode, toggleTheme, cart, user } = useStore();
+  const { isDarkMode, toggleTheme, cart, user, toastMessage, setToastMessage } = useStore();
+
+  // Auto-hide the toast after 2.5 seconds
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage, setToastMessage]);
 
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
@@ -30,7 +40,6 @@ export default function Layout() {
             <div className="w-10 h-10 bg-natural-cream dark:bg-natural-dark rounded-full flex items-center justify-center relative">
                <Coffee className="w-5 h-5 text-natural-dark dark:text-natural-light" />
             </div>
-            {/* UPDATED: SmartCafe Logo */}
             <h1 className="text-xl font-serif font-bold tracking-tight text-natural-dark dark:text-natural-light">Smart<span className="text-natural-accent">Cafe</span></h1>
           </div>
           <button 
@@ -56,7 +65,23 @@ export default function Layout() {
           </AnimatePresence>
         </main>
 
-        <nav className="absolute bottom-0 left-0 w-full bg-white dark:bg-natural-dark border-t border-gray-100 dark:border-white/10 px-6 py-4 flex justify-around items-center z-10">
+        {/* The Professional Toast Notification */}
+        <AnimatePresence>
+          {toastMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: 30, x: '-50%', scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, x: '-50%', scale: 1 }}
+              exit={{ opacity: 0, y: 20, x: '-50%', scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="absolute bottom-24 left-1/2 flex items-center gap-3 bg-natural-dark dark:bg-natural-light text-natural-light dark:text-natural-dark px-5 py-3.5 rounded-full shadow-2xl z-50 text-sm font-semibold whitespace-nowrap"
+            >
+              <CheckCircle2 className="w-5 h-5 text-green-400 dark:text-green-600" />
+              {toastMessage}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <nav className="absolute bottom-0 left-0 w-full bg-white dark:bg-natural-dark border-t border-gray-100 dark:border-white/10 px-6 py-4 flex justify-around items-center z-20">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path || (item.path === '/menu' && location.pathname.startsWith('/product'));
