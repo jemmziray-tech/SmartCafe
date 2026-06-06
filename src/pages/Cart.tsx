@@ -16,7 +16,7 @@ export default function Cart() {
   });
 
   const total = cartTotal();
-  const tax = total * 0.18; // 18% standard VAT rate for Tanzania
+  const tax = total * 0.20; // 20% standard VAT rate for Tanzania
   const grandTotal = total + tax;
 
   // --- WhatsApp Serialization Logic ---
@@ -27,7 +27,7 @@ export default function Cart() {
     placeOrder();
 
     // 2. Format the Business WhatsApp Message
-    const watsappNumber = "255700000000"; // Replace with actual business number
+    const watsappNumber = "255625746245"; // SmartCafe's WhatsApp number in international format without '+'
     let message = `*NEW ORDER - SmartCafe* ☕\n\n`;
     message += `*Customer:* ${deliveryInfo.name}\n`;
     message += `*Delivery Location:* ${deliveryInfo.location}\n`;
