@@ -10,25 +10,23 @@ export default function Cart() {
   // --- Checkout Modal State ---
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState({
-    name: user?.name !== 'Student Guest' ? user?.name : '', // Auto-fill if they are logged in
+    name: user?.name !== 'Student Guest' ? user?.name : '', 
     location: '',
     notes: ''
   });
 
   const total = cartTotal();
-  const tax = total * 0.20; // 20% standard VAT rate for Tanzania
+  const tax = total * 0.18; // 18% standard VAT
   const grandTotal = total + tax;
 
   // --- WhatsApp Serialization Logic ---
   const submitOrder = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 1. Save order internally via Zustand
     placeOrder();
 
-    // 2. Format the Business WhatsApp Message
-    const watsappNumber = "255625746245"; // SmartCafe's WhatsApp number in international format without '+'
-    let message = `*NEW ORDER - SmartCafe* ☕\n\n`;
+    const watsappNumber = "255762446706"; 
+    let message = `*NEW ORDER - SmartCafe* \n\n`;
     message += `*Customer:* ${deliveryInfo.name}\n`;
     message += `*Delivery Location:* ${deliveryInfo.location}\n`;
     if (deliveryInfo.notes) {
@@ -43,7 +41,6 @@ export default function Cart() {
     message += `\n*Total (incl. VAT): TZS ${grandTotal.toLocaleString()}*\n\n`;
     message += `*Payment Preference:* Ready to pay via Mobile Money (M-Pesa / Tigo Pesa). Please share your Lipa Namba to complete this order.`;
 
-    // 3. Open WhatsApp and Redirect App to Profile
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${watsappNumber}?text=${encodedMessage}`, '_blank');
     
@@ -52,7 +49,7 @@ export default function Cart() {
   };
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col h-full bg-natural-light dark:bg-natural-dark pb-20">
+    <div className="absolute inset-0 z-20 flex flex-col h-full bg-natural-light dark:bg-natural-dark">
       
       {/* Header */}
       <header className="flex items-center px-4 py-4 bg-natural-light/50 dark:bg-natural-dark/50 backdrop-blur-md">
@@ -62,8 +59,8 @@ export default function Cart() {
         <h1 className="text-xl font-bold ml-2 text-natural-dark dark:text-natural-light font-serif">My Order</h1>
       </header>
 
-      {/* Cart Items */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 no-scrollbar">
+      {/* Cart Items (Padding adjusted to pb-24 to sit cleanly above the checkout button) */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 no-scrollbar pb-24">
         {cart.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400">
             <div className="w-20 h-20 bg-natural-cream dark:bg-white/10 rounded-full flex items-center justify-center mb-4">
@@ -125,7 +122,7 @@ export default function Cart() {
                   <span className="font-medium text-natural-dark dark:text-natural-light">TZS {total.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>VAT (20%)</span>
+                  <span>VAT (18%)</span>
                   <span className="font-medium text-natural-dark dark:text-natural-light">TZS {tax.toLocaleString()}</span>
                 </div>
                 <div className="pt-2 border-t border-natural-cream dark:border-white/10 flex justify-between font-bold text-lg text-natural-dark dark:text-natural-accent">
@@ -138,9 +135,9 @@ export default function Cart() {
         )}
       </div>
 
-      {/* Checkout Button Trigger */}
+      {/* Checkout Button Trigger (Restored to bottom-0) */}
       {cart.length > 0 && (
-        <div className="absolute bottom-0 w-full p-4 bg-natural-light dark:bg-natural-dark border-t border-natural-cream dark:border-white/10 flex flex-col gap-2 z-30">
+        <div className="absolute bottom-0 w-full p-4 bg-natural-light dark:bg-natural-dark border-t border-natural-cream dark:border-white/10 flex flex-col gap-2 z-30 shadow-[0_-15px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_-15px_30px_rgba(0,0,0,0.2)]">
           <button 
             onClick={() => setShowCheckoutModal(true)}
             className="w-full bg-natural-accent text-white py-4 rounded-3xl font-bold flex justify-center items-center gap-2 shadow-lg hover:opacity-90 transition-opacity"
@@ -153,8 +150,8 @@ export default function Cart() {
 
       {/* --- The Delivery Info Bottom Sheet Modal --- */}
       {showCheckoutModal && (
-        <div className="absolute inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm">
-          <div className="bg-natural-light dark:bg-natural-dark w-full rounded-t-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-[100%] duration-300">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end items-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-natural-light dark:bg-natural-dark w-full max-w-md rounded-t-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-[100%] duration-300">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold font-serif text-natural-dark dark:text-natural-light">Delivery Details</h2>
               <button 

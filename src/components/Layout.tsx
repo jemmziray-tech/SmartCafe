@@ -10,7 +10,6 @@ export default function Layout() {
   const location = useLocation();
   const { isDarkMode, toggleTheme, cart, user, toastMessage, setToastMessage } = useStore();
 
-  // Auto-hide the toast after 2.5 seconds
   useEffect(() => {
     if (toastMessage) {
       const timer = setTimeout(() => {
@@ -32,10 +31,14 @@ export default function Layout() {
   }
 
   return (
-    <div className="flex justify-center min-h-screen bg-natural-light dark:bg-[#1A1A1A] overflow-hidden font-sans">
-      <div className="w-full max-w-md h-[100dvh] bg-natural-base dark:bg-[#2A1E14] shadow-2xl border-x-0 sm:border-x-[8px] sm:border-t-[8px] sm:rounded-t-[3rem] border-[#1A1A1A] flex flex-col relative overflow-hidden transition-colors duration-300">
+    // 1. FIXED INSET-0: Locks the app to the exact screen bounds, preventing body scroll
+    <div className="fixed inset-0 flex justify-center bg-natural-light dark:bg-[#1A1A1A] font-sans sm:py-8 overflow-hidden">
+      
+      {/* 2. MAX-H: Acts as a phone mockup on PC, takes full space on mobile */}
+      <div className="w-full h-full max-w-md sm:max-h-[850px] bg-natural-base dark:bg-[#2A1E14] shadow-2xl sm:border-[8px] sm:rounded-[3rem] border-[#1A1A1A] flex flex-col relative overflow-hidden transition-colors duration-300">
         
-        <header className="flex justify-between items-center px-6 py-4 bg-transparent z-10">
+        {/* Header (Shrink-0 prevents it from squishing) */}
+        <header className="shrink-0 flex justify-between items-center px-6 py-4 bg-transparent z-10">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-natural-cream dark:bg-natural-dark rounded-full flex items-center justify-center relative">
                <Coffee className="w-5 h-5 text-natural-dark dark:text-natural-light" />
@@ -50,7 +53,8 @@ export default function Layout() {
           </button>
         </header>
 
-        <main className="flex-1 overflow-y-auto no-scrollbar relative">
+        {/* Main Scrolling Area */}
+        <main className="flex-1 overflow-y-auto no-scrollbar relative w-full">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -58,14 +62,13 @@ export default function Layout() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="px-6 pb-24 pt-4"
+              className="px-6 pb-6 pt-4"
             >
               <Outlet />
             </motion.div>
           </AnimatePresence>
         </main>
 
-        {/* The Professional Toast Notification */}
         <AnimatePresence>
           {toastMessage && (
             <motion.div
@@ -73,7 +76,7 @@ export default function Layout() {
               animate={{ opacity: 1, y: 0, x: '-50%', scale: 1 }}
               exit={{ opacity: 0, y: 20, x: '-50%', scale: 0.95 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className="absolute bottom-24 left-1/2 flex items-center gap-3 bg-natural-dark dark:bg-natural-light text-natural-light dark:text-natural-dark px-5 py-3.5 rounded-full shadow-2xl z-50 text-sm font-semibold whitespace-nowrap"
+              className="absolute bottom-20 left-1/2 flex items-center gap-3 bg-natural-dark dark:bg-natural-light text-natural-light dark:text-natural-dark px-5 py-3.5 rounded-full shadow-2xl z-50 text-sm font-semibold whitespace-nowrap"
             >
               <CheckCircle2 className="w-5 h-5 text-green-400 dark:text-green-600" />
               {toastMessage}
@@ -81,7 +84,8 @@ export default function Layout() {
           )}
         </AnimatePresence>
 
-        <nav className="absolute bottom-0 left-0 w-full bg-white dark:bg-natural-dark border-t border-gray-100 dark:border-white/10 px-6 py-4 flex justify-around items-center z-20">
+        {/* 3. STATIC NAV: No longer absolutely positioned. It naturally sits at the bottom. */}
+        <nav className="shrink-0 w-full bg-white dark:bg-natural-dark border-t border-gray-100 dark:border-white/10 px-6 py-4 flex justify-around items-center z-20 relative">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path || (item.path === '/menu' && location.pathname.startsWith('/product'));
