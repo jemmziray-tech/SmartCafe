@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --color-natural-light: #FDFBF7;
+  --color-natural-base: #FAF7F2;
+  --color-natural-dark: #3D2B1F;
+  --color-natural-accent: #FF8C00;
+  --color-natural-cream: #F5F5DC;
+}
+
+@layer base {
+  body {
+    @apply bg-natural-base text-natural-dark transition-colors duration-300;
+  }
+  .dark body {
+    @apply bg-natural-dark text-natural-light;
+  }
+
+  
+  /* Utilities to hide scrollbar but keep functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+}
