@@ -8,16 +8,21 @@ import clsx from 'clsx';
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isDarkMode, toggleTheme, cart, user, toastMessage, setToastMessage } = useStore();
+  
+  // 1. Added fetchProducts to our Zustand store destructing
+  const { isDarkMode, toggleTheme, cart, user, toastMessage, setToastMessage, fetchProducts } = useStore();
 
+  // 2. Added fetchProducts() to the useEffect so it fires immediately when the app opens
   useEffect(() => {
+    fetchProducts(); // Pulls the latest menu from Firebase on load!
+    
     if (toastMessage) {
       const timer = setTimeout(() => {
         setToastMessage(null);
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [toastMessage, setToastMessage]);
+  }, [toastMessage, setToastMessage, fetchProducts]);
 
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
@@ -31,10 +36,10 @@ export default function Layout() {
   }
 
   return (
-    // 1. FIXED INSET-0: Locks the app to the exact screen bounds, preventing body scroll
+    // FIXED INSET-0: Locks the app to the exact screen bounds, preventing body scroll
     <div className="fixed inset-0 flex justify-center bg-natural-light dark:bg-[#1A1A1A] font-sans sm:py-8 overflow-hidden">
       
-      {/* 2. MAX-H: Acts as a phone mockup on PC, takes full space on mobile */}
+      {/* MAX-H: Acts as a phone mockup on PC, takes full space on mobile */}
       <div className="w-full h-full max-w-md sm:max-h-[850px] bg-natural-base dark:bg-[#2A1E14] shadow-2xl sm:border-[8px] sm:rounded-[3rem] border-[#1A1A1A] flex flex-col relative overflow-hidden transition-colors duration-300">
         
         {/* Header (Shrink-0 prevents it from squishing) */}
@@ -84,7 +89,7 @@ export default function Layout() {
           )}
         </AnimatePresence>
 
-        {/* 3. STATIC NAV: No longer absolutely positioned. It naturally sits at the bottom. */}
+        {/* STATIC NAV: Naturally sits at the bottom without floating */}
         <nav className="shrink-0 w-full bg-white dark:bg-natural-dark border-t border-gray-100 dark:border-white/10 px-6 py-4 flex justify-around items-center z-20 relative">
           {navItems.map((item) => {
             const Icon = item.icon;
