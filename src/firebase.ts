@@ -1,7 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth"; // 1. Import the Auth service
 
-// TODO: Replace this with your actual config from the Firebase Console
+// Replace this with your actual config from the Firebase Console
 const firebaseConfig = {
   apiKey: "AIzaSyDV715G9tur0W-QyTjpzSBPgcVyK1sEbTY",
   authDomain: "smartcafe-81c3f.firebaseapp.com",
@@ -14,5 +15,6 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Export the Firestore Database to be used in our Zustand store
+// Export the services so the rest of the app can use them
 export const db = getFirestore(app);
+export const auth = getAuth(app); // 2. Export the auth service
