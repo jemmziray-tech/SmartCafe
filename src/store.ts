@@ -2,34 +2,28 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { collection, getDocs, addDoc, doc, setDoc, getDoc } from 'firebase/firestore';
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
-import { db, auth } from './firebase'; // Make sure auth is exported from firebase.ts
+import { db, auth } from './firebase'; 
 import { Product, CartItem, User, Order, Category } from './types';
 
 interface AppState {
-  // --- AUTH STATE ---
   user: User | null;
   isAuthReady: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   initAuth: () => void;
-
   favorites: string[];
   toggleFavorite: (productId: string) => void;
-  
   products: Product[];
   isLoadingProducts: boolean;
   fetchProducts: () => Promise<void>;
-  
   cart: CartItem[];
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   updateCartQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   cartTotal: () => number;
-  
   orders: Order[];
   placeOrder: () => Promise<void>;
-  
   isDarkMode: boolean;
   toggleTheme: () => void;
   toastMessage: string | null;
@@ -39,15 +33,16 @@ interface AppState {
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
-      // --- FIREBASE AUTHENTICATION LOGIC ---
-      user: null, // Start null. Firebase will verify them.
+      user: null, 
       isAuthReady: false,
       
       initAuth: () => {
         onAuthStateChanged(auth, async (firebaseUser) => {
           if (firebaseUser) {
             try {
-              // Try to check if user exists in Firestore
+              // Tracer: Tell the user we made it past Google
+              set({ toastMessage: "Google Success! Checking database..." });
+              
               const userRef = doc(db, 'users', firebaseUser.uid);
               const userSnap = await getDoc(userRef);
               let role: 'customer' | 'admin' = 'customer';
@@ -55,7 +50,6 @@ export const useStore = create<AppState>()(
               if (userSnap.exists()) {
                 role = userSnap.data().role;
               } else {
-                // First time login! Save them to Firestore
                 await setDoc(userRef, {
                   name: firebaseUser.displayName,
                   email: firebaseUser.email,
@@ -64,7 +58,6 @@ export const useStore = create<AppState>()(
                 });
               }
 
-              // Success! Update the UI
               set({ 
                 user: { 
                   id: firebaseUser.uid, 
@@ -73,25 +66,25 @@ export const useStore = create<AppState>()(
                   role: role,
                   avatar: firebaseUser.photoURL || undefined
                 },
-                isAuthReady: true 
+                isAuthReady: true,
+                toastMessage: "Successfully logged in!"
               });
-            } catch (error) {
+            } catch (error: any) {
               console.error("Firestore Database Error:", error);
-              // SAFETY NET: If the database is locked or fails, STILL log them in!
+              // SAFETY NET: If database is locked, still log them in!
               set({ 
                 user: { 
                   id: firebaseUser.uid, 
                   name: firebaseUser.displayName || 'Guest', 
                   email: firebaseUser.email || '', 
-                  role: 'customer', // Default to customer for safety
+                  role: 'customer', 
                   avatar: firebaseUser.photoURL || undefined
                 },
                 isAuthReady: true,
-                toastMessage: "Logged in, but database connection failed."
+                toastMessage: `Database Error: ${error.message}`
               });
             }
           } else {
-            // User is logged out
             set({ user: null, isAuthReady: true });
           }
         });
@@ -99,12 +92,14 @@ export const useStore = create<AppState>()(
 
       loginWithGoogle: async () => {
         try {
+          set({ toastMessage: "Connecting to Google..." });
           const provider = new GoogleAuthProvider();
+          // Force Google to prompt for account selection every time to prevent cached silent failures
+          provider.setCustomParameters({ prompt: 'select_account' }); 
           await signInWithPopup(auth, provider);
-          // The onAuthStateChanged listener above will automatically handle the rest!
-        } catch (error) {
+        } catch (error: any) {
           console.error("Google Sign-In Error:", error);
-          set({ toastMessage: "Failed to sign in. Please try again." });
+          set({ toastMessage: `Login Failed: ${error.message}` });
         }
       },
 
@@ -119,12 +114,7 @@ export const useStore = create<AppState>()(
 
       // --- REST OF THE STATE ---
       favorites: [],
-      toggleFavorite: (productId) => set((state) => ({
-        favorites: state.favorites.includes(productId) 
-          ? state.favorites.filter(id => id !== productId) 
-          : [...state.favorites, productId]
-      })),
-
+      toggleFavorite: (productId) => set((state) => ({ favorites: state.favorites.includes(productId) ? state.favorites.filter(id => id !== productId) : [...state.favorites, productId] })),
       products: [],
       isLoadingProducts: false,
       fetchProducts: async () => {
@@ -138,20 +128,16 @@ export const useStore = create<AppState>()(
           set({ isLoadingProducts: false });
         }
       },
-
       cart: [],
       addToCart: (product) => set((state) => {
         const existing = state.cart.find(item => item.product.id === product.id);
-        const newCart = existing 
-          ? state.cart.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item)
-          : [...state.cart, { product, quantity: 1 }];
+        const newCart = existing ? state.cart.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item) : [...state.cart, { product, quantity: 1 }];
         return { cart: newCart, toastMessage: `${product.name} added to order` };
       }),
       removeFromCart: (productId) => set((state) => ({ cart: state.cart.filter(item => item.product.id !== productId) })),
       updateCartQuantity: (productId, quantity) => set((state) => ({ cart: state.cart.map(item => item.product.id === productId ? { ...item, quantity } : item) })),
       clearCart: () => set({ cart: [] }),
       cartTotal: () => get().cart.reduce((total, item) => total + (item.product.price * item.quantity), 0),
-
       orders: [],
       placeOrder: async () => {
         const state = get();
@@ -171,7 +157,6 @@ export const useStore = create<AppState>()(
           console.error("Error pushing order to cloud:", error);
         }
       },
-
       isDarkMode: false,
       toggleTheme: () => set((state) => {
         const newMode = !state.isDarkMode;
@@ -183,7 +168,6 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'smartcafe-storage',
-      // IMPORTANT: We removed `user` from here. Firebase Auth is now the single source of truth.
       partialize: (state) => ({ cart: state.cart, favorites: state.favorites, isDarkMode: state.isDarkMode, orders: state.orders }),
     }
   )
