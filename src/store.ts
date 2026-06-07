@@ -1,16 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { collection, getDocs, addDoc, doc, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
-import { Product, CartItem, User, Order } from './types';
+import { collection, getDocs, addDoc, doc, setDoc, getDoc } from 'firebase/firestore';
+import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from './firebase'; // Make sure auth is exported from firebase.ts
+import { Product, CartItem, User, Order, Category } from './types';
 
 interface AppState {
+  // --- AUTH STATE ---
   user: User | null;
-  setUser: (user: User | null) => void;
+  isAuthReady: boolean;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
+  initAuth: () => void;
+
   favorites: string[];
   toggleFavorite: (productId: string) => void;
   
-  // --- CLOUD STATE ---
   products: Product[];
   isLoadingProducts: boolean;
   fetchProducts: () => Promise<void>;
@@ -34,28 +39,79 @@ interface AppState {
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
-      user: { id: 'u1', name: 'Student Guest', email: 'guest@smartcafe.tz', role: 'admin' }, // Set as admin temporarily for testing
-      setUser: (user) => set({ user }),
+      // --- FIREBASE AUTHENTICATION LOGIC ---
+      user: null, // Start null. Firebase will verify them.
+      isAuthReady: false,
       
+      initAuth: () => {
+        onAuthStateChanged(auth, async (firebaseUser) => {
+          if (firebaseUser) {
+            // Check if user exists in Firestore
+            const userRef = doc(db, 'users', firebaseUser.uid);
+            const userSnap = await getDoc(userRef);
+            let role: 'customer' | 'admin' = 'customer';
+
+            if (userSnap.exists()) {
+              role = userSnap.data().role;
+            } else {
+              // First time login! Save them to Firestore
+              await setDoc(userRef, {
+                name: firebaseUser.displayName,
+                email: firebaseUser.email,
+                role: 'customer',
+                createdAt: new Date().toISOString()
+              });
+            }
+
+            set({ 
+              user: { 
+                id: firebaseUser.uid, 
+                name: firebaseUser.displayName || 'Guest', 
+                email: firebaseUser.email || '', 
+                role: role,
+                avatar: firebaseUser.photoURL || undefined
+              },
+              isAuthReady: true 
+            });
+          } else {
+            set({ user: null, isAuthReady: true });
+          }
+        });
+      },
+
+      loginWithGoogle: async () => {
+        try {
+          const provider = new GoogleAuthProvider();
+          await signInWithPopup(auth, provider);
+          // The onAuthStateChanged listener above will automatically handle the rest!
+        } catch (error) {
+          console.error("Google Sign-In Error:", error);
+          set({ toastMessage: "Failed to sign in. Please try again." });
+        }
+      },
+
+      logout: async () => {
+        try {
+          await signOut(auth);
+          set({ user: null, toastMessage: "Successfully logged out" });
+        } catch (error) {
+          console.error("Logout Error:", error);
+        }
+      },
+
+      // --- REST OF THE STATE (unchanged) ---
       favorites: [],
       toggleFavorite: (productId) => set((state) => ({
-        favorites: state.favorites.includes(productId)
-          ? state.favorites.filter(id => id !== productId)
-          : [...state.favorites, productId]
+        favorites: state.favorites.includes(productId) ? state.favorites.filter(id => id !== productId) : [...state.favorites, productId]
       })),
 
-      // --- FIREBASE FETCHING LOGIC ---
       products: [],
       isLoadingProducts: false,
       fetchProducts: async () => {
         set({ isLoadingProducts: true });
         try {
           const querySnapshot = await getDocs(collection(db, 'products'));
-          const fetchedProducts = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Product[];
-          
+          const fetchedProducts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
           set({ products: fetchedProducts, isLoadingProducts: false });
         } catch (error) {
           console.error("Error fetching products:", error);
@@ -69,22 +125,17 @@ export const useStore = create<AppState>()(
         const newCart = existing 
           ? state.cart.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item)
           : [...state.cart, { product, quantity: 1 }];
-          
         return { cart: newCart, toastMessage: `${product.name} added to order` };
       }),
       removeFromCart: (productId) => set((state) => ({ cart: state.cart.filter(item => item.product.id !== productId) })),
-      updateCartQuantity: (productId, quantity) => set((state) => ({
-        cart: state.cart.map(item => item.product.id === productId ? { ...item, quantity } : item)
-      })),
+      updateCartQuantity: (productId, quantity) => set((state) => ({ cart: state.cart.map(item => item.product.id === productId ? { ...item, quantity } : item) })),
       clearCart: () => set({ cart: [] }),
       cartTotal: () => get().cart.reduce((total, item) => total + (item.product.price * item.quantity), 0),
 
       orders: [],
-      // --- FIREBASE PUSH LOGIC ---
       placeOrder: async () => {
         const state = get();
         if (state.cart.length === 0 || !state.user) return;
-        
         const newOrder: Order = {
           id: `ORD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
           userId: state.user.id,
@@ -93,11 +144,8 @@ export const useStore = create<AppState>()(
           status: 'pending',
           createdAt: new Date().toISOString()
         };
-
         try {
-          // Push to Firebase
           await addDoc(collection(db, 'orders'), newOrder);
-          // Save locally for instant UI update
           set({ orders: [newOrder, ...state.orders], cart: [] });
         } catch (error) {
           console.error("Error pushing order to cloud:", error);
@@ -115,6 +163,7 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'smartcafe-storage',
+      // IMPORTANT: We removed `user` from here. Firebase Auth is now the single source of truth.
       partialize: (state) => ({ cart: state.cart, favorites: state.favorites, isDarkMode: state.isDarkMode, orders: state.orders }),
     }
   )
