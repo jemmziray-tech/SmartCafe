@@ -46,34 +46,52 @@ export const useStore = create<AppState>()(
       initAuth: () => {
         onAuthStateChanged(auth, async (firebaseUser) => {
           if (firebaseUser) {
-            // Check if user exists in Firestore
-            const userRef = doc(db, 'users', firebaseUser.uid);
-            const userSnap = await getDoc(userRef);
-            let role: 'customer' | 'admin' = 'customer';
+            try {
+              // Try to check if user exists in Firestore
+              const userRef = doc(db, 'users', firebaseUser.uid);
+              const userSnap = await getDoc(userRef);
+              let role: 'customer' | 'admin' = 'customer';
 
-            if (userSnap.exists()) {
-              role = userSnap.data().role;
-            } else {
-              // First time login! Save them to Firestore
-              await setDoc(userRef, {
-                name: firebaseUser.displayName,
-                email: firebaseUser.email,
-                role: 'customer',
-                createdAt: new Date().toISOString()
+              if (userSnap.exists()) {
+                role = userSnap.data().role;
+              } else {
+                // First time login! Save them to Firestore
+                await setDoc(userRef, {
+                  name: firebaseUser.displayName,
+                  email: firebaseUser.email,
+                  role: 'customer',
+                  createdAt: new Date().toISOString()
+                });
+              }
+
+              // Success! Update the UI
+              set({ 
+                user: { 
+                  id: firebaseUser.uid, 
+                  name: firebaseUser.displayName || 'Guest', 
+                  email: firebaseUser.email || '', 
+                  role: role,
+                  avatar: firebaseUser.photoURL || undefined
+                },
+                isAuthReady: true 
+              });
+            } catch (error) {
+              console.error("Firestore Database Error:", error);
+              // SAFETY NET: If the database is locked or fails, STILL log them in!
+              set({ 
+                user: { 
+                  id: firebaseUser.uid, 
+                  name: firebaseUser.displayName || 'Guest', 
+                  email: firebaseUser.email || '', 
+                  role: 'customer', // Default to customer for safety
+                  avatar: firebaseUser.photoURL || undefined
+                },
+                isAuthReady: true,
+                toastMessage: "Logged in, but database connection failed."
               });
             }
-
-            set({ 
-              user: { 
-                id: firebaseUser.uid, 
-                name: firebaseUser.displayName || 'Guest', 
-                email: firebaseUser.email || '', 
-                role: role,
-                avatar: firebaseUser.photoURL || undefined
-              },
-              isAuthReady: true 
-            });
           } else {
+            // User is logged out
             set({ user: null, isAuthReady: true });
           }
         });
@@ -99,10 +117,12 @@ export const useStore = create<AppState>()(
         }
       },
 
-      // --- REST OF THE STATE (unchanged) ---
+      // --- REST OF THE STATE ---
       favorites: [],
       toggleFavorite: (productId) => set((state) => ({
-        favorites: state.favorites.includes(productId) ? state.favorites.filter(id => id !== productId) : [...state.favorites, productId]
+        favorites: state.favorites.includes(productId) 
+          ? state.favorites.filter(id => id !== productId) 
+          : [...state.favorites, productId]
       })),
 
       products: [],
