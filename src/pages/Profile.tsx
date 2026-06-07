@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
-import { Heart, Clock, LogOut, Settings, MessageCircle, ChevronRight, ShieldCheck, Loader2 } from 'lucide-react';
+import { 
+  Heart, Clock, LogOut, Settings, MessageCircle, 
+  ChevronRight, ShieldCheck, Loader2, Crown, ShoppingBag 
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 
 export default function Profile() {
   const { user, loginWithGoogle, logout, orders, favorites, products } = useStore();
@@ -13,31 +17,39 @@ export default function Profile() {
   const handleLogin = async () => {
     setIsLoggingIn(true);
     await loginWithGoogle();
-    // We don't set it to false here because if successful, the component unmounts and switches to the logged-in view automatically.
-    // If it fails, the user will see the error toast, and they can refresh.
+    setIsLoggingIn(false); // Reset in case of failure
   };
 
+  // --- UNAUTHENTICATED VIEW ---
   if (!user) {
     return (
-      <div className="flex flex-col h-full justify-center p-6 space-y-8 pb-20">
-        <div className="text-center">
-          <div className="w-24 h-24 bg-natural-cream dark:bg-white/10 rounded-full mx-auto mb-6 flex items-center justify-center shadow-inner">
-            <span className="text-5xl">☕️</span>
-          </div>
-          <h1 className="text-3xl font-bold font-serif text-natural-dark dark:text-natural-light mb-2">Karibu SmartCafe</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm px-4">Sign in to save favorites, track your orders, and speed up checkout.</p>
-        </div>
+      <div className="flex flex-col h-full justify-center p-6 space-y-8 pb-20 relative overflow-hidden">
+        {/* Background Decorative Blur */}
+        <div className="absolute -top-20 -right-20 w-64 h-64 bg-natural-accent/20 rounded-full blur-3xl z-0 pointer-events-none"></div>
+        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-[#25D366]/20 rounded-full blur-3xl z-0 pointer-events-none"></div>
 
-        <button 
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center z-10 relative"
+        >
+          <div className="w-28 h-28 bg-gradient-to-br from-natural-accent to-[#FF6B35] rounded-[2rem] mx-auto mb-8 flex items-center justify-center shadow-xl shadow-natural-accent/30 rotate-3 hover:rotate-0 transition-transform">
+            <span className="text-5xl drop-shadow-md">☕️</span>
+          </div>
+          <h1 className="text-3xl font-bold font-serif text-natural-dark dark:text-natural-light mb-3 tracking-tight">Karibu SmartCafe</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm px-4 leading-relaxed">Sign in to save your favorite Tanzanian meals, track your orders, and speed up checkout.</p>
+        </motion.div>
+
+        <motion.button 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
           onClick={handleLogin}
           disabled={isLoggingIn}
-          className="w-full bg-white dark:bg-[#2A1E14] border border-natural-cream dark:border-white/10 text-natural-dark dark:text-natural-light py-4 rounded-2xl font-bold flex justify-center items-center gap-3 shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+          className="w-full bg-white dark:bg-[#2A1E14] border border-gray-100 dark:border-white/5 text-natural-dark dark:text-natural-light py-4 rounded-2xl font-bold flex justify-center items-center gap-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all disabled:opacity-50 z-10 relative"
         >
           {isLoggingIn ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin text-natural-accent" />
-              Authenticating...
-            </>
+            <><Loader2 className="w-5 h-5 animate-spin text-natural-accent" /> Authenticating...</>
           ) : (
             <>
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -49,47 +61,151 @@ export default function Profile() {
               Continue with Google
             </>
           )}
-        </button>
+        </motion.button>
       </div>
     );
   }
 
   // --- AUTHENTICATED VIEW ---
   return (
-    <div className="space-y-6 pb-20">
-      <div className="flex items-center gap-4 bg-natural-light dark:bg-natural-dark p-5 rounded-3xl shadow-sm border border-natural-cream dark:border-white/10">
-        <div className="w-16 h-16 rounded-full overflow-hidden bg-natural-cream flex shrink-0 items-center justify-center border-2 border-white dark:border-natural-dark shadow-md">
-          {user.avatar ? (
-            <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-xl font-bold text-natural-accent">{user.name.charAt(0)}</span>
-          )}
+    <div className="space-y-6 pb-20 relative">
+      {/* Hero Header */}
+      <div className="relative">
+        <div className="h-32 rounded-3xl bg-gradient-to-r from-natural-accent to-[#FF6B35] w-full overflow-hidden absolute top-0 left-0 -z-10 shadow-lg">
+          <div className="w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 mix-blend-overlay"></div>
         </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h1 className="font-bold text-lg text-natural-dark dark:text-natural-light line-clamp-1">{user.name}</h1>
-            {user.role === 'admin' && <ShieldCheck className="w-4 h-4 text-green-500" />}
+        
+        <div className="pt-20 px-4">
+          <div className="bg-natural-light dark:bg-natural-dark rounded-[2rem] p-5 shadow-xl shadow-black/5 border border-white/50 dark:border-white/10 flex flex-col items-center relative backdrop-blur-sm">
+            {/* Overlapping Avatar */}
+            <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden bg-natural-cream flex items-center justify-center border-4 border-natural-light dark:border-natural-dark shadow-md absolute -top-10 rotate-3 hover:rotate-0 transition-transform duration-300">
+              {user.avatar ? (
+                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl font-bold text-natural-accent">{user.name.charAt(0)}</span>
+              )}
+            </div>
+            
+            <div className="mt-10 text-center w-full">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <h1 className="font-bold text-xl text-natural-dark dark:text-natural-light font-serif tracking-tight">{user.name}</h1>
+                {user.role === 'admin' ? (
+                  <ShieldCheck className="w-5 h-5 text-natural-accent drop-shadow-sm" />
+                ) : (
+                  <Crown className="w-4 h-4 text-yellow-500 drop-shadow-sm" />
+                )}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-white/5 inline-block px-3 py-1 rounded-full">{user.email}</p>
+            </div>
+
+            {/* Quick Stats Widget */}
+            <div className="flex justify-around w-full mt-6 pt-5 border-t border-gray-100 dark:border-white/10">
+              <div className="text-center">
+                <p className="text-xl font-bold text-natural-dark dark:text-natural-light">{orders.length}</p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Orders</p>
+              </div>
+              <div className="w-px h-8 bg-gray-200 dark:bg-white/10"></div>
+              <div className="text-center">
+                <p className="text-xl font-bold text-natural-dark dark:text-natural-light">{favorites.length}</p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Favorites</p>
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">{user.email}</p>
         </div>
       </div>
 
+      {/* Admin Action */}
       {user.role === 'admin' && (
-        <button 
+        <motion.button 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
           onClick={() => navigate('/admin')}
-          className="w-full bg-natural-dark dark:bg-natural-light text-white dark:text-natural-dark py-4 rounded-2xl font-bold flex justify-center items-center gap-2 shadow-lg hover:opacity-90 transition-opacity"
+          className="w-full bg-gradient-to-r from-[#1A1A1A] to-[#2A2A2A] dark:from-white dark:to-gray-200 text-white dark:text-natural-dark py-4 rounded-2xl font-bold flex justify-center items-center gap-2 shadow-[0_8px_30px_rgb(255,140,0,0.2)] hover:shadow-[0_8px_30px_rgb(255,140,0,0.4)] transition-all border border-[#333] dark:border-white"
         >
           <ShieldCheck className="w-5 h-5" />
-          Enter Admin Portal
-        </button>
+          Access Admin Portal
+        </motion.button>
       )}
 
-      {/* Orders and lower UI... */}
+      {/* Recent Orders List */}
+      <div>
+        <h3 className="font-bold text-natural-dark dark:text-natural-light mb-3 px-1 flex items-center gap-2">
+          <ShoppingBag className="w-4 h-4 text-natural-accent" /> Recent Activity
+        </h3>
+        {orders.length === 0 ? (
+          <div className="bg-natural-base dark:bg-natural-dark/50 p-6 rounded-3xl text-center border border-dashed border-gray-200 dark:border-white/10">
+            <div className="w-12 h-12 bg-white dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Clock className="w-5 h-5 text-gray-300" />
+            </div>
+            <p className="text-gray-500 text-sm font-medium">No orders yet.</p>
+            <p className="text-xs text-gray-400 mt-1">Time to grab a coffee!</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {orders.slice(0, 3).map(order => (
+              <div key={order.id} className="bg-white dark:bg-natural-dark p-4 rounded-2xl flex items-center justify-between shadow-[0_2px_10px_rgb(0,0,0,0.02)] border border-gray-50 dark:border-white/5 hover:border-natural-accent/30 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center text-natural-accent">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-natural-dark dark:text-natural-light">{order.id}</h4>
+                    <p className="text-[10px] text-gray-400">{new Date(order.createdAt).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold text-sm text-natural-dark dark:text-natural-light">TZS {order.total.toLocaleString()}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                    order.status === 'pending' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                  }`}>
+                    {order.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Settings Panel */}
+      <div className="bg-white dark:bg-natural-dark rounded-[2rem] p-2 shadow-[0_2px_10px_rgb(0,0,0,0.02)] border border-gray-50 dark:border-white/5">
+        <button className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-natural-base dark:hover:bg-white/5 transition-colors group">
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Heart className="w-4 h-4 text-red-500" />
+            </div>
+            <span className="font-semibold text-sm text-natural-dark dark:text-natural-light">Saved Favorites ({favoriteProducts.length})</span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-natural-accent transition-colors" />
+        </button>
+        <div className="h-px w-full bg-gray-50 dark:bg-white/5"></div>
+        <button className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-natural-base dark:hover:bg-white/5 transition-colors group">
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Settings className="w-4 h-4 text-blue-500" />
+            </div>
+            <span className="font-semibold text-sm text-natural-dark dark:text-natural-light">Account Settings</span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-natural-accent transition-colors" />
+        </button>
+        <div className="h-px w-full bg-gray-50 dark:bg-white/5"></div>
+        <button className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-natural-base dark:hover:bg-white/5 transition-colors group">
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-8 rounded-full bg-green-50 dark:bg-green-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <MessageCircle className="w-4 h-4 text-green-500" />
+            </div>
+            <span className="font-semibold text-sm text-natural-dark dark:text-natural-light">WhatsApp Support</span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-natural-accent transition-colors" />
+        </button>
+      </div>
+
+      {/* Logout */}
       <button 
         onClick={logout}
-        className="w-full flex items-center justify-center gap-2 p-4 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-2xl font-semibold mt-4 transition-colors"
+        className="w-full flex items-center justify-center gap-2 p-4 text-gray-400 hover:text-red-500 font-bold transition-colors"
       >
-        <LogOut className="w-5 h-5" />
+        <LogOut className="w-4 h-4" />
         Log Out
       </button>
     </div>
