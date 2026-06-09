@@ -2,37 +2,43 @@ import React, { useState } from 'react';
 import { useStore } from '../store';
 import { 
   Heart, Clock, LogOut, Settings, MessageCircle, 
-  ChevronRight, ShieldCheck, Loader2, Crown, ShoppingBag 
+  ChevronRight, ShieldCheck, Loader2, Crown, ShoppingBag,
+  X, Moon, Sun, Bell
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function Profile() {
-  const { user, loginWithGoogle, logout, orders, favorites, products } = useStore();
+  const { user, loginWithGoogle, logout, orders, favorites, products, isDarkMode, toggleTheme } = useStore();
   const navigate = useNavigate();
+  
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const favoriteProducts = products.filter(p => favorites.includes(p.id));
 
   const handleLogin = async () => {
     setIsLoggingIn(true);
     await loginWithGoogle();
-    setIsLoggingIn(false); // Reset in case of failure
+    setIsLoggingIn(false);
+  };
+
+  // --- WHATSAPP SUPPORT LOGIC ---
+  const handleWhatsAppSupport = () => {
+    const phoneNumber = "255762446706"; 
+    const message = encodeURIComponent("Hello SmartCafe team, I need some assistance with my account.");
+    window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
   };
 
   // --- UNAUTHENTICATED VIEW ---
   if (!user) {
     return (
       <div className="flex flex-col h-full justify-center p-6 space-y-8 pb-20 relative overflow-hidden">
-        {/* Background Decorative Blur */}
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-natural-accent/20 rounded-full blur-3xl z-0 pointer-events-none"></div>
         <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-[#25D366]/20 rounded-full blur-3xl z-0 pointer-events-none"></div>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center z-10 relative"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center z-10 relative">
           <div className="w-28 h-28 bg-gradient-to-br from-natural-accent to-[#FF6B35] rounded-[2rem] mx-auto mb-8 flex items-center justify-center shadow-xl shadow-natural-accent/30 rotate-3 hover:rotate-0 transition-transform">
             <span className="text-5xl drop-shadow-md">☕️</span>
           </div>
@@ -77,7 +83,6 @@ export default function Profile() {
         
         <div className="pt-20 px-4">
           <div className="bg-natural-light dark:bg-natural-dark rounded-[2rem] p-5 shadow-xl shadow-black/5 border border-white/50 dark:border-white/10 flex flex-col items-center relative backdrop-blur-sm">
-            {/* Overlapping Avatar */}
             <div className="w-20 h-20 rounded-[1.5rem] overflow-hidden bg-natural-cream flex items-center justify-center border-4 border-natural-light dark:border-natural-dark shadow-md absolute -top-10 rotate-3 hover:rotate-0 transition-transform duration-300">
               {user.avatar ? (
                 <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
@@ -98,7 +103,6 @@ export default function Profile() {
               <p className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-white/5 inline-block px-3 py-1 rounded-full">{user.email}</p>
             </div>
 
-            {/* Quick Stats Widget */}
             <div className="flex justify-around w-full mt-6 pt-5 border-t border-gray-100 dark:border-white/10">
               <div className="text-center">
                 <p className="text-xl font-bold text-natural-dark dark:text-natural-light">{orders.length}</p>
@@ -114,7 +118,6 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Admin Action */}
       {user.role === 'admin' && (
         <motion.button 
           initial={{ opacity: 0, y: 10 }}
@@ -179,7 +182,12 @@ export default function Profile() {
           <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-natural-accent transition-colors" />
         </button>
         <div className="h-px w-full bg-gray-50 dark:bg-white/5"></div>
-        <button className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-natural-base dark:hover:bg-white/5 transition-colors group">
+        
+        {/* SETTINGS BUTTON UPDATED */}
+        <button 
+          onClick={() => setShowSettings(true)}
+          className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-natural-base dark:hover:bg-white/5 transition-colors group"
+        >
           <div className="flex items-center gap-4">
             <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Settings className="w-4 h-4 text-blue-500" />
@@ -189,7 +197,12 @@ export default function Profile() {
           <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-natural-accent transition-colors" />
         </button>
         <div className="h-px w-full bg-gray-50 dark:bg-white/5"></div>
-        <button className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-natural-base dark:hover:bg-white/5 transition-colors group">
+
+        {/* WHATSAPP BUTTON UPDATED */}
+        <button 
+          onClick={handleWhatsAppSupport}
+          className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-natural-base dark:hover:bg-white/5 transition-colors group"
+        >
           <div className="flex items-center gap-4">
             <div className="w-8 h-8 rounded-full bg-green-50 dark:bg-green-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
               <MessageCircle className="w-4 h-4 text-green-500" />
@@ -200,7 +213,6 @@ export default function Profile() {
         </button>
       </div>
 
-      {/* Logout */}
       <button 
         onClick={logout}
         className="w-full flex items-center justify-center gap-2 p-4 text-gray-400 hover:text-red-500 font-bold transition-colors"
@@ -208,6 +220,83 @@ export default function Profile() {
         <LogOut className="w-4 h-4" />
         Log Out
       </button>
+
+      {/* --- THE SETTINGS BOTTOM SHEET --- */}
+      <AnimatePresence>
+        {showSettings && (
+          <div className="fixed inset-0 z-[100] flex flex-col justify-end items-center bg-black/40 backdrop-blur-sm sm:p-4 p-0">
+            <motion.div 
+              initial={{ opacity: 0, y: "100%" }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="bg-natural-base dark:bg-[#1A1A1A] w-full max-w-md sm:rounded-[2rem] rounded-t-[2rem] shadow-2xl flex flex-col overflow-hidden"
+            >
+              <div className="flex justify-between items-center p-6 border-b border-natural-cream dark:border-white/10 bg-natural-light dark:bg-[#2A1E14]">
+                <div>
+                  <h2 className="text-xl font-bold font-serif text-natural-dark dark:text-natural-light">Settings</h2>
+                  <p className="text-xs text-gray-500">Manage your preferences</p>
+                </div>
+                <button 
+                  onClick={() => setShowSettings(false)}
+                  className="w-8 h-8 flex items-center justify-center bg-natural-cream dark:bg-white/10 rounded-full text-gray-500 hover:text-natural-accent transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Dark Mode Toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-natural-light dark:bg-white/10 flex items-center justify-center text-natural-dark dark:text-natural-light">
+                      {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-natural-dark dark:text-natural-light">Appearance</p>
+                      <p className="text-xs text-gray-500">{isDarkMode ? 'Dark Mode' : 'Light Mode'}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={toggleTheme}
+                    className={`w-12 h-6 rounded-full p-1 transition-colors ${isDarkMode ? 'bg-natural-accent' : 'bg-gray-300 dark:bg-gray-600'}`}
+                  >
+                    <motion.div 
+                      layout
+                      className="w-4 h-4 bg-white rounded-full shadow-sm"
+                      animate={{ x: isDarkMode ? 24 : 0 }}
+                    />
+                  </button>
+                </div>
+
+                {/* Notifications Toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-natural-light dark:bg-white/10 flex items-center justify-center text-natural-dark dark:text-natural-light">
+                      <Bell className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-natural-dark dark:text-natural-light">Push Notifications</p>
+                      <p className="text-xs text-gray-500">Order updates & offers</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+                    className={`w-12 h-6 rounded-full p-1 transition-colors ${notificationsEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+                  >
+                    <motion.div 
+                      layout
+                      className="w-4 h-4 bg-white rounded-full shadow-sm"
+                      animate={{ x: notificationsEnabled ? 24 : 0 }}
+                    />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
