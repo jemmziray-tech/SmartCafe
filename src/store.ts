@@ -3,29 +3,37 @@ import { persist } from 'zustand/middleware';
 import { collection, getDocs, addDoc, doc, setDoc, getDoc } from 'firebase/firestore';
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from './firebase'; 
-import { Product, CartItem, User, Order, Category } from './types';
+import { Product, CartItem, User, Order } from './types';
 
 interface AppState {
+  // --- AUTH STATE ---
   user: User | null;
   isAuthReady: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   initAuth: () => void;
+
+  // --- APP STATE ---
   favorites: string[];
   toggleFavorite: (productId: string) => void;
+  
   products: Product[];
   isLoadingProducts: boolean;
   fetchProducts: () => Promise<void>;
+  
   cart: CartItem[];
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   updateCartQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   cartTotal: () => number;
+  
   orders: Order[];
   placeOrder: () => Promise<void>;
+  
   isDarkMode: boolean;
   toggleTheme: () => void;
+  
   toastMessage: string | null;
   setToastMessage: (msg: string | null) => void;
 }
@@ -40,20 +48,37 @@ export const useStore = create<AppState>()(
         onAuthStateChanged(auth, async (firebaseUser) => {
           if (firebaseUser) {
             try {
-              // Tracer: Tell the user we made it past Google
-              set({ toastMessage: "Google Success! Checking database..." });
+              set({ toastMessage: "Verifying credentials..." });
+              
+              // 1. THE AUTO-ADMIN WHITELIST
+              // Add any future admin emails to this array!
+              const MASTER_ADMIN_EMAILS = [
+                'jem.mziray@gmail.com', 
+                'bakiriwilbroad@gmail.com',
+                'daudiyolamu10dna@gmail.com'
+              ];
+
+              const userEmail = firebaseUser.email || '';
+              const isWhitelisted = MASTER_ADMIN_EMAILS.includes(userEmail);
               
               const userRef = doc(db, 'users', firebaseUser.uid);
               const userSnap = await getDoc(userRef);
-              let role: 'customer' | 'admin' = 'customer';
+              
+              let finalRole: 'customer' | 'admin' = isWhitelisted ? 'admin' : 'customer';
 
               if (userSnap.exists()) {
-                role = userSnap.data().role;
+                // If they are in the database, but their role needs an upgrade because of the whitelist:
+                if (isWhitelisted && userSnap.data().role !== 'admin') {
+                  await setDoc(userRef, { role: 'admin' }, { merge: true });
+                } else {
+                  finalRole = userSnap.data().role; // Otherwise, respect whatever is in the database
+                }
               } else {
+                // First-time login: Create their profile with their designated role
                 await setDoc(userRef, {
                   name: firebaseUser.displayName,
-                  email: firebaseUser.email,
-                  role: 'customer',
+                  email: userEmail,
+                  role: finalRole,
                   createdAt: new Date().toISOString()
                 });
               }
@@ -62,16 +87,17 @@ export const useStore = create<AppState>()(
                 user: { 
                   id: firebaseUser.uid, 
                   name: firebaseUser.displayName || 'Guest', 
-                  email: firebaseUser.email || '', 
-                  role: role,
+                  email: userEmail, 
+                  role: finalRole,
                   avatar: firebaseUser.photoURL || undefined
                 },
                 isAuthReady: true,
-                toastMessage: "Successfully logged in!"
+                toastMessage: finalRole === 'admin' ? "Welcome back, Admin!" : "Successfully logged in!"
               });
+
             } catch (error: any) {
               console.error("Firestore Database Error:", error);
-              // SAFETY NET: If database is locked, still log them in!
+              // SAFETY NET: If the database connection drops, let them in as a basic customer
               set({ 
                 user: { 
                   id: firebaseUser.uid, 
@@ -81,7 +107,7 @@ export const useStore = create<AppState>()(
                   avatar: firebaseUser.photoURL || undefined
                 },
                 isAuthReady: true,
-                toastMessage: `Database Error: ${error.message}`
+                toastMessage: "Logged in via offline cache."
               });
             }
           } else {
@@ -114,7 +140,12 @@ export const useStore = create<AppState>()(
 
       // --- REST OF THE STATE ---
       favorites: [],
-      toggleFavorite: (productId) => set((state) => ({ favorites: state.favorites.includes(productId) ? state.favorites.filter(id => id !== productId) : [...state.favorites, productId] })),
+      toggleFavorite: (productId) => set((state) => ({ 
+        favorites: state.favorites.includes(productId) 
+          ? state.favorites.filter(id => id !== productId) 
+          : [...state.favorites, productId] 
+      })),
+      
       products: [],
       isLoadingProducts: false,
       fetchProducts: async () => {
@@ -128,16 +159,20 @@ export const useStore = create<AppState>()(
           set({ isLoadingProducts: false });
         }
       },
+      
       cart: [],
       addToCart: (product) => set((state) => {
         const existing = state.cart.find(item => item.product.id === product.id);
-        const newCart = existing ? state.cart.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item) : [...state.cart, { product, quantity: 1 }];
+        const newCart = existing 
+          ? state.cart.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item) 
+          : [...state.cart, { product, quantity: 1 }];
         return { cart: newCart, toastMessage: `${product.name} added to order` };
       }),
       removeFromCart: (productId) => set((state) => ({ cart: state.cart.filter(item => item.product.id !== productId) })),
       updateCartQuantity: (productId, quantity) => set((state) => ({ cart: state.cart.map(item => item.product.id === productId ? { ...item, quantity } : item) })),
       clearCart: () => set({ cart: [] }),
       cartTotal: () => get().cart.reduce((total, item) => total + (item.product.price * item.quantity), 0),
+      
       orders: [],
       placeOrder: async () => {
         const state = get();
@@ -157,18 +192,26 @@ export const useStore = create<AppState>()(
           console.error("Error pushing order to cloud:", error);
         }
       },
+      
       isDarkMode: false,
       toggleTheme: () => set((state) => {
         const newMode = !state.isDarkMode;
         newMode ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark');
         return { isDarkMode: newMode };
       }),
+      
       toastMessage: null,
       setToastMessage: (msg) => set({ toastMessage: msg })
     }),
     {
       name: 'smartcafe-storage',
-      partialize: (state) => ({ cart: state.cart, favorites: state.favorites, isDarkMode: state.isDarkMode, orders: state.orders }),
+      // We do NOT persist the `user` object here. Firebase Auth manages that now.
+      partialize: (state) => ({ 
+        cart: state.cart, 
+        favorites: state.favorites, 
+        isDarkMode: state.isDarkMode, 
+        orders: state.orders 
+      }),
     }
   )
 );
