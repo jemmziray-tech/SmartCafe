@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store';
 import { useNavigate } from 'react-router-dom';
-import { Search, SlidersHorizontal, Plus } from 'lucide-react';
+import { Search, SlidersHorizontal, Plus, Coffee } from 'lucide-react';
 import clsx from 'clsx';
 import { Category } from '../types';
 
@@ -20,84 +21,146 @@ export default function Menu() {
     return matchesSearch && matchesCategory;
   });
 
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-natural-dark dark:text-natural-light">Our Menu</h1>
+  // Framer Motion staggered animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 }
+    }
+  };
 
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  };
+
+  return (
+    <div className="space-y-6 pb-24">
+      {/* Header Area */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold font-serif tracking-tight text-natural-dark dark:text-natural-light">
+          Our Menu
+        </h1>
+      </div>
+
+      {/* Search Bar */}
       <div className="flex gap-3">
-        <div className="flex-1 flex items-center gap-3 px-4 py-3 bg-natural-light dark:bg-natural-dark rounded-2xl shadow-sm border border-natural-cream dark:border-white/10">
+        <div className="flex-1 flex items-center gap-3 px-5 py-4 bg-white dark:bg-natural-dark rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-gray-50 dark:border-white/5 transition-all focus-within:shadow-[0_8px_30px_rgb(255,140,0,0.1)] focus-within:border-natural-accent/30">
           <Search className="w-5 h-5 text-gray-400" />
           <input 
             type="text" 
-            placeholder="Search details..." 
+            placeholder="Search for a meal..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="bg-transparent border-none outline-none text-natural-dark dark:text-natural-light text-sm w-full placeholder:text-gray-400"
           />
         </div>
-        <button className="px-4 py-3 bg-natural-accent rounded-2xl flex items-center justify-center text-white shadow-sm font-bold">
+        <motion.button 
+          whileTap={{ scale: 0.95 }}
+          className="px-5 py-4 bg-natural-accent rounded-[1.5rem] flex items-center justify-center text-white shadow-[0_8px_30px_rgb(255,140,0,0.2)] font-bold"
+        >
           <SlidersHorizontal className="w-5 h-5" />
-        </button>
+        </motion.button>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+      {/* Category Pills (Horizontal Scroll) */}
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
         {CATEGORIES.map((cat) => (
-          <button
+          <motion.button
+            whileTap={{ scale: 0.95 }}
             key={cat}
             onClick={() => setActiveCategory(cat)}
             className={clsx(
-              "px-5 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-colors shadow-sm",
+              "px-6 py-2.5 rounded-full whitespace-nowrap text-sm transition-all duration-300 relative overflow-hidden",
               activeCategory === cat
-                ? "bg-natural-accent text-white font-bold"
-                : "bg-natural-light text-natural-dark border border-natural-cream dark:bg-natural-dark dark:border-white/10 dark:text-natural-light"
+                ? "text-white font-bold shadow-md"
+                : "bg-white text-gray-500 border border-gray-100 hover:border-gray-200 dark:bg-[#1A1A1A] dark:border-white/5 dark:text-gray-400"
             )}
           >
-            {cat}
-          </button>
+            {activeCategory === cat && (
+              <motion.div 
+                layoutId="activeCategory" 
+                className="absolute inset-0 bg-natural-accent -z-10"
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              />
+            )}
+            <span className="relative z-10">{cat}</span>
+          </motion.button>
         ))}
       </div>
 
-      <div className="grid gap-4">
-        {filteredProducts.map((product) => (
-          <div 
-            key={product.id}
-            onClick={() => navigate(`/product/${product.id}`)}
-            className="flex items-center gap-4 p-3 bg-natural-light dark:bg-natural-dark rounded-3xl shadow-sm border border-natural-cream dark:border-white/10 cursor-pointer"
-          >
-            <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0 bg-natural-cream flex items-center justify-center">
-              <img 
-                src={product.imageUrl} 
-                alt={product.name} 
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="flex-1 py-1">
-              <h3 className="font-bold text-sm text-natural-dark dark:text-natural-light">{product.name}</h3>
-              <p className="text-[10px] text-gray-500 line-clamp-1 mb-2">
-                {product.description}
-              </p>
-              <div className="flex items-center justify-between">
-                {/* TZS Formatting */}
-                <span className="text-sm font-bold text-natural-accent">TZS {product.price.toLocaleString()}</span>
-                <button 
+      {/* Product Grid */}
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
+      >
+        <AnimatePresence mode="popLayout">
+          {filteredProducts.map((product) => (
+            <motion.div 
+              layout
+              variants={itemVariants}
+              initial="hidden"
+              animate="show"
+              exit={{ opacity: 0, scale: 0.9 }}
+              key={product.id}
+              onClick={() => navigate(`/product/${product.id}`)}
+              className="group bg-white dark:bg-[#1A1A1A] rounded-[2rem] p-3 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-50 dark:border-white/5 cursor-pointer flex flex-col transition-all duration-300"
+            >
+              {/* Image Wrapper */}
+              <div className="relative aspect-square w-full rounded-[1.5rem] bg-natural-cream dark:bg-white/5 overflow-hidden mb-4">
+                <img 
+                  src={product.imageUrl || product.image} // Fallback to handle type differences
+                  alt={product.name} 
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
+                />
+                
+                {/* Floating Add to Cart Button */}
+                <motion.button 
+                  whileTap={{ scale: 0.9 }}
                   onClick={(e) => {
                     e.stopPropagation();
                     addToCart(product);
                   }}
-                  className="w-8 h-8 flex items-center justify-center rounded-xl bg-natural-dark text-white dark:bg-natural-light dark:text-natural-dark text-lg font-light"
+                  className="absolute bottom-3 right-3 w-10 h-10 bg-white/80 dark:bg-black/50 backdrop-blur-md text-natural-dark dark:text-white rounded-full flex items-center justify-center shadow-lg hover:bg-natural-accent hover:text-white dark:hover:bg-natural-accent transition-colors"
                 >
-                  <Plus className="w-4 h-4" />
-                </button>
+                  <Plus className="w-5 h-5" />
+                </motion.button>
               </div>
-            </div>
+
+              {/* Content */}
+              <div className="px-2 pb-2 flex flex-col flex-1">
+                <h3 className="font-bold text-natural-dark dark:text-natural-light truncate text-sm sm:text-base mb-1">
+                  {product.name}
+                </h3>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed mb-3 flex-1">
+                  {product.description}
+                </p>
+                <span className="text-sm font-bold text-natural-accent">
+                  TZS {product.price.toLocaleString()}
+                </span>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* Empty State */}
+      {filteredProducts.length === 0 && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center justify-center py-20 text-center"
+        >
+          <div className="w-20 h-20 bg-gray-50 dark:bg-white/5 rounded-full flex items-center justify-center mb-4">
+            <Coffee className="w-8 h-8 text-gray-300 dark:text-gray-600" />
           </div>
-        ))}
-        {filteredProducts.length === 0 && (
-          <div className="text-center py-10 text-gray-500 dark:text-gray-400 text-sm">
-            No items found.
-          </div>
-        )}
-      </div>
+          <h3 className="font-bold text-natural-dark dark:text-natural-light text-lg">No meals found</h3>
+          <p className="text-gray-500 text-sm mt-1">Try adjusting your search or category filter.</p>
+        </motion.div>
+      )}
     </div>
   );
 }

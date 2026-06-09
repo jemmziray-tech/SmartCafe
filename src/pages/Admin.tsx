@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { 
-  TrendingUp, Users, Package, ShoppingBag, Plus, 
-  X, Image as ImageIcon, Link as LinkIcon, UploadCloud, Trash2 
+  LayoutDashboard, TrendingUp, Users, ShoppingBag, Plus, 
+  X, Image as ImageIcon, Link as LinkIcon, UploadCloud, Trash2,
+  UtensilsCrossed, LogOut, Clock, CheckCircle2, ChevronRight, Settings
 } from 'lucide-react';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import { Category } from '../types';
@@ -20,20 +21,32 @@ interface DraftProduct {
   imageMode: 'link' | 'file';
 }
 
+type Tab = 'overview' | 'orders' | 'menu';
+
 export default function Admin() {
-  const { user, orders, products, fetchProducts } = useStore();
-  const [activeTab, setActiveTab] = useState<'overview' | 'menu'>('overview');
+  const { user, orders, products, fetchProducts, logout } = useStore();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
   
   // --- Upload Modal State ---
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [drafts, setDrafts] = useState<DraftProduct[]>([]);
 
+  // Security Redirect
   if (user?.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
 
+  // Metrics
   const revenue = orders.reduce((acc, sum) => acc + sum.total, 0);
+  const pendingOrders = orders.filter(o => o.status === 'pending');
+
+  const TABS = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'orders', label: 'Live Orders', icon: ShoppingBag, badge: pendingOrders.length },
+    { id: 'menu', label: 'Menu Editor', icon: UtensilsCrossed },
+  ] as const;
 
   // --- Draft Management Logic ---
   const addDraft = () => {
@@ -56,11 +69,10 @@ export default function Admin() {
     setDrafts(drafts.map(d => d.id === id ? { ...d, [field]: value } : d));
   };
 
-  // Convert uploaded local file to Base64 for database storage
   const handleFileUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 1048576) { // 1MB limit for Firestore Base64
+      if (file.size > 1048576) { 
         alert('File is too large. Please upload an image under 1MB.');
         return;
       }
@@ -74,14 +86,12 @@ export default function Admin() {
 
   // --- Firebase Batch Upload Logic ---
   const handlePublish = async () => {
-    // Validation
     const isValid = drafts.every(d => d.name && d.price && d.description && d.imageUrl);
     if (!isValid) return alert("Please fill out all fields and provide an image for every item.");
 
     setIsUploading(true);
     try {
       for (const draft of drafts) {
-        // Generate a clean ID (e.g., "Spiced Masala Chai" -> "spiced-masala-chai")
         const productId = draft.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
         const productRef = doc(db, 'products', productId);
         
@@ -97,7 +107,7 @@ export default function Admin() {
       alert(`Successfully published ${drafts.length} items to the live menu!`);
       setShowUploadModal(false);
       setDrafts([]);
-      fetchProducts(); // Sync Zustand with new live data
+      fetchProducts(); 
     } catch (error) {
       console.error(error);
       alert('Error publishing to cloud. Check console.');
@@ -106,113 +116,246 @@ export default function Admin() {
   };
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#121212] flex flex-col md:flex-row font-sans -mx-4 sm:mx-0">
       
-      {/* --- Admin Header & Tabs --- */}
-      <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold tracking-tight text-natural-dark dark:text-natural-light font-serif">
-          Admin Portal
-        </h1>
-        <div className="flex gap-2 bg-natural-light dark:bg-natural-dark p-1 rounded-2xl border border-natural-cream dark:border-white/10">
-          <button 
-            onClick={() => setActiveTab('overview')}
-            className={`flex-1 py-2 text-sm font-bold rounded-xl transition-colors ${activeTab === 'overview' ? 'bg-white dark:bg-[#3D2B1F] text-natural-accent shadow-sm' : 'text-gray-500'}`}
-          >
-            Overview
-          </button>
-          <button 
-            onClick={() => setActiveTab('menu')}
-            className={`flex-1 py-2 text-sm font-bold rounded-xl transition-colors ${activeTab === 'menu' ? 'bg-white dark:bg-[#3D2B1F] text-natural-accent shadow-sm' : 'text-gray-500'}`}
-          >
-            Manage Menu
-          </button>
-        </div>
-      </div>
-
-      {/* =========================================
-          TAB: OVERVIEW
-          ========================================= */}
-      {activeTab === 'overview' && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-natural-light dark:bg-natural-dark p-4 rounded-3xl shadow-sm border border-natural-cream dark:border-white/10">
-              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-500 mb-3">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-              <p className="text-gray-500 dark:text-gray-400 text-xs font-medium">Total Revenue</p>
-              <p className="text-lg font-bold dark:text-natural-light whitespace-nowrap">TZS {revenue.toLocaleString()}</p>
-            </div>
-            <div className="bg-natural-light dark:bg-natural-dark p-4 rounded-3xl shadow-sm border border-natural-cream dark:border-white/10">
-              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 mb-3">
-                <ShoppingBag className="w-5 h-5" />
-              </div>
-              <p className="text-gray-500 dark:text-gray-400 text-xs font-medium">Total Orders</p>
-              <p className="text-xl font-bold dark:text-natural-light">{orders.length}</p>
-            </div>
+      {/* --- SIDEBAR (Desktop) / TOP NAV (Mobile) --- */}
+      <aside className="w-full md:w-72 bg-white dark:bg-[#1A1A1A] border-b md:border-b-0 md:border-r border-gray-100 dark:border-white/5 flex flex-col shadow-[4px_0_24px_rgb(0,0,0,0.02)] z-10 sticky top-0 md:h-screen shrink-0">
+        <div className="p-6 flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-natural-accent to-[#FF6B35] rounded-xl flex items-center justify-center shadow-lg shadow-natural-accent/30">
+            <span className="text-xl">☕️</span>
           </div>
-
-          {/* Pending Orders */}
           <div>
-            <h2 className="font-bold text-natural-dark dark:text-natural-light mb-3">Recent Orders</h2>
-            <div className="space-y-3">
-              {orders.slice(0, 5).map(order => (
-                <div key={order.id} className="bg-natural-light dark:bg-natural-dark p-4 rounded-3xl flex items-center justify-between border border-natural-cream dark:border-white/10">
-                  <div>
-                    <p className="font-bold text-sm text-natural-dark dark:text-natural-light">{order.id}</p>
-                    <p className="text-xs text-gray-500">{order.items.length} items</p>
-                  </div>
-                  <div className="flex gap-2 items-center">
-                    <span className="text-sm font-bold text-natural-accent">TZS {order.total.toLocaleString()}</span>
-                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
-                      order.status === 'pending' ? 'bg-natural-cream text-natural-accent dark:bg-natural-accent/20' : 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                    }`}>
-                      {order.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-              {orders.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-4 bg-natural-light dark:bg-natural-dark rounded-xl">No orders yet.</p>
-              )}
-            </div>
+            <h2 className="font-bold text-lg text-natural-dark dark:text-white leading-tight">SmartCafe</h2>
+            <p className="text-[10px] uppercase tracking-widest text-natural-accent font-bold">Admin Command</p>
           </div>
-        </motion.div>
-      )}
+        </div>
 
-      {/* =========================================
-          TAB: MANAGE MENU
-          ========================================= */}
-      {activeTab === 'menu' && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+        <nav className="flex-1 px-4 pb-4 flex md:flex-col gap-2 overflow-x-auto md:overflow-visible no-scrollbar">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as Tab)}
+              className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 relative group whitespace-nowrap md:whitespace-normal ${
+                activeTab === tab.id 
+                  ? 'text-natural-accent font-bold' 
+                  : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'
+              }`}
+            >
+              {activeTab === tab.id && (
+                <motion.div 
+                  layoutId="adminTab" 
+                  className="absolute inset-0 bg-orange-50 dark:bg-orange-500/10 rounded-2xl -z-10"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <tab.icon className={`w-5 h-5 ${activeTab === tab.id ? 'text-natural-accent' : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300'}`} />
+              {tab.label}
+              {tab.badge ? (
+                <span className="ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">
+                  {tab.badge}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-4 hidden md:block border-t border-gray-100 dark:border-white/5">
           <button 
             onClick={() => {
-              if(drafts.length === 0) addDraft();
-              setShowUploadModal(true);
+              logout();
+              navigate('/profile');
             }}
-            className="w-full bg-gradient-to-r from-natural-accent to-[#FF6B35] text-white py-4 rounded-3xl font-bold flex justify-center items-center gap-2 shadow-lg hover:opacity-90 transition-opacity"
+            className="w-full flex items-center gap-3 px-4 py-3 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-2xl transition-colors font-medium"
           >
-            <Plus className="w-5 h-5" />
-            Upload New Products
+            <LogOut className="w-5 h-5" />
+            Exit Portal
           </button>
+        </div>
+      </aside>
 
-          <h2 className="font-bold text-natural-dark dark:text-natural-light pt-2">Live Menu Items ({products.length})</h2>
-          
-          <div className="grid grid-cols-2 gap-3">
-            {products.map(product => (
-              <div key={product.id} className="bg-natural-light dark:bg-natural-dark rounded-2xl overflow-hidden shadow-sm border border-natural-cream dark:border-white/10 flex flex-col">
-                <div className="h-24 w-full bg-gray-200">
-                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+      {/* --- MAIN CONTENT AREA --- */}
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-80px)] md:h-screen">
+        
+        <header className="flex justify-between items-end mb-8">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold font-serif text-natural-dark dark:text-white capitalize">
+              {activeTab.replace('-', ' ')}
+            </h1>
+            <p className="text-gray-500 text-sm mt-1">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-full bg-natural-cream dark:bg-white/10 flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-sm overflow-hidden shrink-0">
+            {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover" alt="Admin" /> : <span className="font-bold text-natural-accent">{user?.name?.charAt(0)}</span>}
+          </div>
+        </header>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            
+            {/* OVERVIEW TAB */}
+            {activeTab === 'overview' && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                  <div className="bg-white dark:bg-[#1A1A1A] p-6 rounded-[2rem] shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-50 dark:border-white/5 relative overflow-hidden">
+                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-green-50 dark:bg-green-500/10 rounded-full blur-2xl"></div>
+                    <div className="flex items-center gap-4 mb-4 relative z-10">
+                      <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 text-green-600 rounded-2xl flex items-center justify-center">
+                        <TrendingUp className="w-6 h-6" />
+                      </div>
+                      <p className="text-sm font-bold text-gray-400 uppercase tracking-wider">Total Revenue</p>
+                    </div>
+                    <h3 className="text-3xl font-bold text-natural-dark dark:text-white relative z-10">
+                      TZS {revenue.toLocaleString()}
+                    </h3>
+                  </div>
+
+                  <div className="bg-white dark:bg-[#1A1A1A] p-6 rounded-[2rem] shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-50 dark:border-white/5 relative overflow-hidden">
+                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-orange-50 dark:bg-orange-500/10 rounded-full blur-2xl"></div>
+                    <div className="flex items-center gap-4 mb-4 relative z-10">
+                      <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 text-orange-600 rounded-2xl flex items-center justify-center">
+                        <ShoppingBag className="w-6 h-6" />
+                      </div>
+                      <p className="text-sm font-bold text-gray-400 uppercase tracking-wider">Total Orders</p>
+                    </div>
+                    <h3 className="text-3xl font-bold text-natural-dark dark:text-white relative z-10">
+                      {orders.length}
+                    </h3>
+                  </div>
+
+                  <div className="bg-white dark:bg-[#1A1A1A] p-6 rounded-[2rem] shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-50 dark:border-white/5 relative overflow-hidden">
+                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 dark:bg-blue-500/10 rounded-full blur-2xl"></div>
+                    <div className="flex items-center gap-4 mb-4 relative z-10">
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 text-blue-600 rounded-2xl flex items-center justify-center">
+                        <UtensilsCrossed className="w-6 h-6" />
+                      </div>
+                      <p className="text-sm font-bold text-gray-400 uppercase tracking-wider">Menu Items</p>
+                    </div>
+                    <h3 className="text-3xl font-bold text-natural-dark dark:text-white relative z-10">
+                      {products.length}
+                    </h3>
+                  </div>
                 </div>
-                <div className="p-3 flex-1 flex flex-col justify-between">
-                  <h4 className="font-bold text-xs line-clamp-1 dark:text-natural-light">{product.name}</h4>
-                  <p className="text-natural-accent text-xs font-bold mt-1">TZS {product.price.toLocaleString()}</p>
+
+                <div>
+                  <div className="flex items-center justify-between mb-4 mt-8">
+                    <h3 className="text-lg font-bold text-natural-dark dark:text-white">Recent Activity</h3>
+                    <button 
+                      onClick={() => setActiveTab('orders')}
+                      className="text-sm font-bold text-natural-accent hover:text-orange-600 flex items-center gap-1"
+                    >
+                      View All <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  <div className="bg-white dark:bg-[#1A1A1A] rounded-[2rem] shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-50 dark:border-white/5 p-2">
+                    {orders.length === 0 ? (
+                       <div className="p-8 text-center text-gray-500">No orders have been placed yet.</div>
+                    ) : (
+                      orders.slice(0, 4).map((order) => (
+                        <div key={order.id} className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 rounded-2xl transition-colors">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              order.status === 'pending' ? 'bg-orange-100 text-orange-600 dark:bg-orange-500/20' : 'bg-green-100 text-green-600 dark:bg-green-500/20'
+                            }`}>
+                              {order.status === 'pending' ? <Clock className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm text-natural-dark dark:text-white">{order.id}</p>
+                              <p className="text-xs text-gray-500">{order.items.length} items</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-sm text-natural-dark dark:text-white">TZS {order.total.toLocaleString()}</p>
+                            <p className="text-[10px] text-gray-400">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ORDERS TAB */}
+            {activeTab === 'orders' && (
+              <div className="space-y-4">
+                {orders.length === 0 ? (
+                  <div className="text-center py-20 text-gray-500">No live orders right now.</div>
+                ) : (
+                  orders.map(order => (
+                    <div key={order.id} className="bg-white dark:bg-[#1A1A1A] p-5 rounded-[2rem] shadow-sm border border-gray-50 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="font-bold text-natural-dark dark:text-white">{order.id}</h4>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            order.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'
+                          }`}>
+                            {order.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {order.items.map(i => `${i.quantity}x ${i.product.name}`).join(', ')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4 border-t md:border-t-0 pt-4 md:pt-0 border-gray-100 dark:border-white/10 justify-between md:justify-end">
+                        <span className="font-bold text-lg text-natural-accent">TZS {order.total.toLocaleString()}</span>
+                        {order.status === 'pending' && (
+                          <button className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm font-bold transition-colors shadow-sm">
+                            Complete Order
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* MENU TAB */}
+            {activeTab === 'menu' && (
+              <div>
+                <button 
+                  onClick={() => {
+                    if(drafts.length === 0) addDraft();
+                    setShowUploadModal(true);
+                  }}
+                  className="w-full md:w-auto mb-6 flex items-center justify-center gap-2 bg-natural-dark dark:bg-white text-white dark:text-natural-dark px-6 py-3 rounded-xl font-bold shadow-md hover:scale-[1.02] transition-transform"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add New Item
+                </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {products.map(product => (
+                    <div key={product.id} className="bg-white dark:bg-[#1A1A1A] p-4 rounded-[1.5rem] border border-gray-50 dark:border-white/5 shadow-sm flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-xl bg-gray-100 dark:bg-white/5 overflow-hidden shrink-0">
+                         {product.image || product.imageUrl ? <img src={product.image || product.imageUrl} className="w-full h-full object-cover" alt="food"/> : null}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-sm text-natural-dark dark:text-white truncate">{product.name}</h4>
+                        <p className="text-xs text-gray-500">{product.category}</p>
+                        <p className="text-sm font-bold text-natural-accent mt-1">TZS {product.price.toLocaleString()}</p>
+                      </div>
+                      <button className="p-2 text-gray-400 hover:text-natural-dark dark:hover:text-white transition-colors">
+                        <Settings className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
+            )}
+
+          </motion.div>
+        </AnimatePresence>
+
+      </main>
 
       {/* =========================================
           THE ELEGANT BATCH UPLOAD MODAL
