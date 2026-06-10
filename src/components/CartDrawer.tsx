@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Minus, ShoppingBag, ArrowRight, Trash2 } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, ArrowRight, Trash2, Loader2 } from 'lucide-react';
 import { useStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 
@@ -10,11 +10,21 @@ interface CartDrawerProps {
 }
 
 export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
-  const { cart, removeFromCart, updateCartQuantity, cartTotal, user, setToastMessage, clearCart } = useStore();
+  const { 
+    cart, 
+    removeFromCart, 
+    updateCartQuantity, 
+    cartTotal, 
+    user, 
+    setToastMessage, 
+    placeOrder 
+  } = useStore();
+  
   const navigate = useNavigate();
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Purely frontend mock checkout to avoid hitting the paused database
-  const handleCheckout = () => {
+  // --- THE WHATSAPP CHECKOUT ENGINE ---
+  const handleCheckout = async () => {
     if (!user) {
       setToastMessage("Please sign in to complete your order");
       onClose();
@@ -24,14 +34,46 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     
     if (cart.length === 0) return;
 
-    setToastMessage("Processing your order...");
+    setIsProcessing(true);
+    setToastMessage("Securing your order...");
     
-    // Simulate a network delay for the UX feel
-    setTimeout(() => {
-      clearCart();
-      setToastMessage("Order placed successfully! (Frontend Mock)");
+    try {
+      // 1. Push the official order to your Firebase Database (Shows up in Admin Dashboard)
+      await placeOrder();
+
+      // 2. Construct the WhatsApp Digital Receipt
+      const businessPhone = "255762446706"; // Your SmartCafe Business Line
+      
+      let message = `*NEW ORDER FROM SMARTCAFE* ☕️\n`;
+      message += `---------------------------\n`;
+      message += `*Customer:* ${user.name}\n`;
+      message += `*Email:* ${user.email}\n\n`;
+      message += `*Order Details:*\n`;
+      
+      cart.forEach((item, index) => {
+        message += `${index + 1}. ${item.quantity}x ${item.product.name} - TZS ${(item.product.price * item.quantity).toLocaleString()}\n`;
+      });
+      
+      message += `---------------------------\n`;
+      message += `*TOTAL:* TZS ${cartTotal().toLocaleString()}\n`;
+      message += `---------------------------\n`;
+      message += `Hello! I have placed this order on the website. Please confirm my delivery details.`;
+
+      // 3. Encode the message for a URL
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://wa.me/${businessPhone}?text=${encodedMessage}`;
+
+      // 4. Open WhatsApp and close the cart
+      window.open(whatsappUrl, '_blank');
+      setToastMessage("Redirecting to WhatsApp...");
       onClose();
-    }, 1500);
+
+    } catch (error) {
+      console.error("Checkout failed:", error);
+      setToastMessage("Order failed. Please check your connection.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -96,22 +138,19 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     key={item.product.id} 
                     className="flex items-center gap-4 bg-white dark:bg-natural-dark p-4 rounded-3xl border border-gray-50 dark:border-white/5 shadow-sm group"
                   >
-                    {/* Item Image / Placeholder */}
                     <div className="w-16 h-16 rounded-2xl bg-natural-cream dark:bg-white/5 flex items-center justify-center overflow-hidden shrink-0 border-2 border-transparent group-hover:border-natural-accent/20 transition-colors">
-                      {item.product.image ? (
-                        <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
+                      {item.product.imageUrl || item.product.image ? (
+                        <img src={item.product.imageUrl || item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
                       ) : (
                         <span className="text-2xl">🍲</span>
                       )}
                     </div>
                     
-                    {/* Item Details */}
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-sm text-natural-dark dark:text-natural-light truncate">{item.product.name}</h4>
                       <p className="text-natural-accent font-bold text-sm mt-0.5">TZS {item.product.price.toLocaleString()}</p>
                     </div>
 
-                    {/* Quantity Pill */}
                     <div className="flex flex-col items-end gap-2 shrink-0">
                       <button 
                         onClick={() => removeFromCart(item.product.id)}
@@ -150,7 +189,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Delivery Fee</span>
-                    <span className="font-semibold text-green-500">Free</span>
+                    <span className="font-semibold text-green-500">To be calculated</span>
                   </div>
                   <div className="h-px w-full bg-gray-100 dark:bg-white/10"></div>
                   <div className="flex justify-between items-end">
@@ -162,10 +201,17 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 <motion.button 
                   whileTap={{ scale: 0.98 }}
                   onClick={handleCheckout}
-                  className="w-full bg-gradient-to-r from-[#1A1A1A] to-[#2A2A2A] dark:from-white dark:to-gray-200 text-white dark:text-natural-dark py-4 rounded-2xl font-bold flex justify-center items-center gap-3 shadow-[0_8px_30px_rgb(255,140,0,0.2)] hover:shadow-[0_8px_30px_rgb(255,140,0,0.4)] transition-all"
+                  disabled={isProcessing}
+                  className="w-full bg-gradient-to-r from-[#1A1A1A] to-[#2A2A2A] dark:from-white dark:to-gray-200 text-white dark:text-natural-dark py-4 rounded-2xl font-bold flex justify-center items-center gap-3 shadow-[0_8px_30px_rgb(255,140,0,0.2)] hover:shadow-[0_8px_30px_rgb(255,140,0,0.4)] transition-all disabled:opacity-50"
                 >
-                  Confirm Order
-                  <ArrowRight className="w-5 h-5" />
+                  {isProcessing ? (
+                    <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
+                  ) : (
+                    <>
+                      Confirm & Send to WhatsApp
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
                 </motion.button>
               </div>
             )}
