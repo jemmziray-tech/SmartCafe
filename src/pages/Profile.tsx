@@ -24,7 +24,6 @@ export default function Profile() {
     setIsLoggingIn(false);
   };
 
-  // --- WHATSAPP SUPPORT LOGIC ---
   const handleWhatsAppSupport = () => {
     const phoneNumber = "255762446706"; 
     const message = encodeURIComponent("Hello SmartCafe team, I need some assistance with my account.");
@@ -182,8 +181,6 @@ export default function Profile() {
           <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-natural-accent transition-colors" />
         </button>
         <div className="h-px w-full bg-gray-50 dark:bg-white/5"></div>
-        
-        {/* SETTINGS BUTTON UPDATED */}
         <button 
           onClick={() => setShowSettings(true)}
           className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-natural-base dark:hover:bg-white/5 transition-colors group"
@@ -197,8 +194,6 @@ export default function Profile() {
           <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-natural-accent transition-colors" />
         </button>
         <div className="h-px w-full bg-gray-50 dark:bg-white/5"></div>
-
-        {/* WHATSAPP BUTTON UPDATED */}
         <button 
           onClick={handleWhatsAppSupport}
           className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-natural-base dark:hover:bg-white/5 transition-colors group"
@@ -213,6 +208,7 @@ export default function Profile() {
         </button>
       </div>
 
+      {/* Logout */}
       <button 
         onClick={logout}
         className="w-full flex items-center justify-center gap-2 p-4 text-gray-400 hover:text-red-500 font-bold transition-colors"
@@ -221,7 +217,7 @@ export default function Profile() {
         Log Out
       </button>
 
-      {/* --- THE SETTINGS BOTTOM SHEET --- */}
+      {/* --- SETTINGS BOTTOM SHEET --- */}
       <AnimatePresence>
         {showSettings && (
           <div className="fixed inset-0 z-[100] flex flex-col justify-end items-center bg-black/40 backdrop-blur-sm sm:p-4 p-0">
@@ -296,7 +292,6 @@ export default function Profile() {
           </div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }
