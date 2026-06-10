@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store';
 import { useNavigate } from 'react-router-dom';
@@ -13,21 +13,27 @@ export default function Menu() {
   const navigate = useNavigate();
   
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<'All' | Category>('All');
 
-  const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // ELITE FIX: Debounce the search input to prevent re-rendering on every single keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  // Framer Motion staggered animation variants
+  // ELITE FIX: Memoize the filtering logic so it only runs when data actually changes
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, debouncedSearch, activeCategory]);
+
   const containerVariants = {
     hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.05 }
-    }
+    show: { opacity: 1, transition: { staggerChildren: 0.05 } }
   };
 
   const itemVariants = {
@@ -37,14 +43,12 @@ export default function Menu() {
 
   return (
     <div className="space-y-6 pb-24">
-      {/* Header Area */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold font-serif tracking-tight text-natural-dark dark:text-natural-light">
           Our Menu
         </h1>
       </div>
 
-      {/* Search Bar */}
       <div className="flex gap-3">
         <div className="flex-1 flex items-center gap-3 px-5 py-4 bg-white dark:bg-natural-dark rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-gray-50 dark:border-white/5 transition-all focus-within:shadow-[0_8px_30px_rgb(255,140,0,0.1)] focus-within:border-natural-accent/30">
           <Search className="w-5 h-5 text-gray-400" />
@@ -64,7 +68,6 @@ export default function Menu() {
         </motion.button>
       </div>
 
-      {/* Category Pills (Horizontal Scroll) */}
       <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
         {CATEGORIES.map((cat) => (
           <motion.button
@@ -90,7 +93,6 @@ export default function Menu() {
         ))}
       </div>
 
-      {/* Product Grid */}
       <motion.div 
         variants={containerVariants}
         initial="hidden"
@@ -109,15 +111,15 @@ export default function Menu() {
               onClick={() => navigate(`/product/${product.id}`)}
               className="group bg-white dark:bg-[#1A1A1A] rounded-[2rem] p-3 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-50 dark:border-white/5 cursor-pointer flex flex-col transition-all duration-300"
             >
-              {/* Image Wrapper */}
               <div className="relative aspect-square w-full rounded-[1.5rem] bg-natural-cream dark:bg-white/5 overflow-hidden mb-4">
+                {/* ELITE FIX: loading="lazy" defers image loading until it scrolls into view */}
                 <img 
-                  src={product.imageUrl || product.image} // Fallback to handle type differences
+                  src={product.imageUrl || product.image} 
                   alt={product.name} 
+                  loading="lazy" 
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
                 />
                 
-                {/* Floating Add to Cart Button */}
                 <motion.button 
                   whileTap={{ scale: 0.9 }}
                   onClick={(e) => {
@@ -130,7 +132,6 @@ export default function Menu() {
                 </motion.button>
               </div>
 
-              {/* Content */}
               <div className="px-2 pb-2 flex flex-col flex-1">
                 <h3 className="font-bold text-natural-dark dark:text-natural-light truncate text-sm sm:text-base mb-1">
                   {product.name}
@@ -147,7 +148,6 @@ export default function Menu() {
         </AnimatePresence>
       </motion.div>
 
-      {/* Empty State */}
       {filteredProducts.length === 0 && (
         <motion.div 
           initial={{ opacity: 0 }}
