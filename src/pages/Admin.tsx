@@ -58,17 +58,22 @@ export default function Admin() {
     }]);
   };
 
-  const removeDraft = (id: string) => setDrafts(drafts.filter(d => d.id !== id));
+  const removeDraft = (id: string) => setDrafts(prev => prev.filter(d => d.id !== id));
 
+  // ELITE FIX: Functional state update prevents React from overwriting data
   const updateDraft = (id: string, field: keyof DraftProduct, value: any) => {
-    setDrafts(drafts.map(d => d.id === id ? { ...d, [field]: value } : d));
+    setDrafts(prev => prev.map(d => d.id === id ? { ...d, [field]: value } : d));
   };
 
+  // ELITE FIX: Process the file and preview URL in a single, safe sweep
   const handleFileUpload = (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      updateDraft(id, 'imageFile', file);
-      updateDraft(id, 'imagePreview', URL.createObjectURL(file)); 
+      setDrafts(prev => prev.map(d => d.id === id ? { 
+        ...d, 
+        imageFile: file, 
+        imagePreview: URL.createObjectURL(file) 
+      } : d));
     }
   };
 
@@ -118,10 +123,8 @@ export default function Admin() {
   return (
     <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#121212] flex flex-col md:flex-row font-sans w-full">
       
-      {/* SIDEBAR (Elegant & Sticky) */}
       <aside className="w-full md:w-72 bg-white dark:bg-[#1A1A1A] border-b md:border-b-0 md:border-r border-gray-100 dark:border-white/5 flex flex-col shadow-sm z-40 sticky top-0 md:h-screen shrink-0">
         
-        {/* Mobile-friendly Header */}
         <div className="p-4 md:p-6 flex items-center justify-between md:justify-start gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-natural-dark to-gray-800 dark:from-white dark:to-gray-200 rounded-xl flex items-center justify-center shadow-md">
@@ -132,13 +135,11 @@ export default function Admin() {
               <p className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Admin Portal</p>
             </div>
           </div>
-          {/* Mobile Logout (Hidden on Desktop) */}
           <button onClick={() => { logout(); navigate('/profile'); }} className="md:hidden p-2 text-gray-400 hover:text-red-500 rounded-full bg-gray-50 dark:bg-white/5">
             <LogOut className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Navigation Tabs */}
         <nav className="flex-1 px-4 pb-4 md:pb-0 flex md:flex-col gap-2 overflow-x-auto md:overflow-visible no-scrollbar">
           {TABS.map((tab) => (
             <button
@@ -158,7 +159,6 @@ export default function Admin() {
           ))}
         </nav>
 
-        {/* Desktop Logout */}
         <div className="p-4 hidden md:block border-t border-gray-100 dark:border-white/5 mt-auto">
           <button onClick={() => { logout(); navigate('/profile'); }} className="w-full flex items-center gap-3 px-4 py-3 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-2xl transition-colors font-medium">
             <LogOut className="w-5 h-5" /> Sign Out
@@ -166,7 +166,6 @@ export default function Admin() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
       <main className="flex-1 w-full overflow-x-hidden md:h-screen md:overflow-y-auto">
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
           
@@ -183,11 +182,9 @@ export default function Admin() {
           <AnimatePresence mode="wait">
             <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-6">
               
-              {/* OVERVIEW TAB */}
               {activeTab === 'overview' && (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                    {/* Metric Card 1 */}
                     <div className="bg-white dark:bg-[#1A1A1A] p-6 rounded-[2rem] shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden group hover:border-gray-200 dark:hover:border-white/10 transition-colors">
                       <div className="absolute -right-10 -top-10 w-32 h-32 bg-gray-50 dark:bg-white/5 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
                       <div className="flex items-center gap-4 mb-4 relative z-10">
@@ -197,7 +194,6 @@ export default function Admin() {
                       <h3 className="text-3xl font-bold text-natural-dark dark:text-white relative z-10">TZS {revenue.toLocaleString()}</h3>
                     </div>
 
-                    {/* Metric Card 2 */}
                     <div className="bg-white dark:bg-[#1A1A1A] p-6 rounded-[2rem] shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden group hover:border-gray-200 dark:hover:border-white/10 transition-colors">
                       <div className="absolute -right-10 -top-10 w-32 h-32 bg-gray-50 dark:bg-white/5 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
                       <div className="flex items-center gap-4 mb-4 relative z-10">
@@ -207,7 +203,6 @@ export default function Admin() {
                       <h3 className="text-3xl font-bold text-natural-dark dark:text-white relative z-10">{orders.length}</h3>
                     </div>
 
-                    {/* Metric Card 3 */}
                     <div className="bg-white dark:bg-[#1A1A1A] p-6 rounded-[2rem] shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden group hover:border-gray-200 dark:hover:border-white/10 transition-colors">
                       <div className="absolute -right-10 -top-10 w-32 h-32 bg-gray-50 dark:bg-white/5 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
                       <div className="flex items-center gap-4 mb-4 relative z-10">
@@ -253,7 +248,6 @@ export default function Admin() {
                 </>
               )}
 
-              {/* ORDERS TAB */}
               {activeTab === 'orders' && (
                 <div className="space-y-4">
                   {orders.length === 0 ? (
@@ -280,7 +274,6 @@ export default function Admin() {
                 </div>
               )}
 
-              {/* MENU EDITOR TAB */}
               {activeTab === 'menu' && (
                 <div>
                   <button onClick={() => { if(drafts.length === 0) addDraft(); setShowUploadModal(true); }} className="w-full sm:w-auto mb-6 flex items-center justify-center gap-2 bg-natural-dark dark:bg-white text-white dark:text-natural-dark px-6 py-3.5 rounded-2xl font-bold shadow-sm hover:opacity-90 transition-opacity">
@@ -311,13 +304,11 @@ export default function Admin() {
         </div>
       </main>
 
-      {/* SECURE BATCH UPLOAD MODAL (Strict z-index and padding constraints) */}
       <AnimatePresence>
         {showUploadModal && (
           <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center items-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 md:p-6">
             <motion.div initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }} className="bg-[#F8F9FA] dark:bg-[#121212] w-full max-w-2xl sm:rounded-[2rem] rounded-t-[2rem] shadow-2xl flex flex-col max-h-[95dvh] sm:max-h-[85dvh] overflow-hidden">
               
-              {/* Modal Header */}
               <div className="flex justify-between items-center p-6 bg-white dark:bg-[#1A1A1A] border-b border-gray-100 dark:border-white/5 shrink-0">
                 <div>
                   <h2 className="text-xl font-bold text-natural-dark dark:text-white">Batch Upload</h2>
@@ -328,7 +319,6 @@ export default function Admin() {
                 </button>
               </div>
 
-              {/* Scrollable Draft List */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 no-scrollbar">
                 {drafts.map((draft, index) => (
                   <div key={draft.id} className="bg-white dark:bg-[#1A1A1A] p-5 sm:p-6 rounded-[2rem] shadow-sm border border-gray-100 dark:border-white/5 relative">
@@ -342,7 +332,6 @@ export default function Admin() {
                     </div>
 
                     <div className="space-y-5">
-                      {/* Flex grid handles mobile squishing natively */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wider">Item Name</label>
@@ -384,9 +373,9 @@ export default function Admin() {
                         </div>
 
                         {draft.imageMode === 'link' ? (
-                          <input type="text" placeholder="https://images.unsplash.com/..." value={draft.imageUrl} onChange={(e) => updateDraft(draft.id, 'imageUrl', e.target.value)} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-natural-dark dark:focus:ring-white dark:text-white transition-shadow" />
+                          <input type="text" placeholder="https://images.unsplash.com/..." value={draft.imageUrl} onChange={(e) => updateDraft(draft.id, 'imageUrl', e.target.value)} className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-natural-dark dark:focus:ring-white dark:text-white transition-shadow mb-2" />
                         ) : (
-                          <div className="relative w-full border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors bg-gray-50 dark:bg-black/20 group">
+                          <div className="relative w-full border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors bg-gray-50 dark:bg-black/20 group mb-2">
                             <input type="file" accept="image/*" onChange={(e) => handleFileUpload(draft.id, e)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                             <UploadCloud className="w-6 h-6 text-gray-400 mx-auto mb-2 group-hover:scale-110 transition-transform" />
                             <span className="text-xs text-gray-500 font-medium">Click or drag image to upload</span>
@@ -409,7 +398,6 @@ export default function Admin() {
                 </button>
               </div>
 
-              {/* Modal Footer */}
               <div className="p-4 sm:p-6 bg-white dark:bg-[#1A1A1A] border-t border-gray-100 dark:border-white/5 shrink-0 safe-area-bottom">
                 <button onClick={handlePublish} disabled={isUploading} className="w-full bg-natural-dark dark:bg-white text-white dark:text-natural-dark py-4 rounded-2xl font-bold flex justify-center items-center gap-2 shadow-md hover:opacity-90 transition-opacity disabled:opacity-50">
                   {isUploading ? <UploadCloud className="w-5 h-5 animate-bounce" /> : <UploadCloud className="w-5 h-5" />}

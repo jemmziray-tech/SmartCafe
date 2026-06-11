@@ -49,7 +49,7 @@ export default function Cart() {
   };
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col h-full bg-natural-light dark:bg-natural-dark">
+      <div className="flex flex-col h-full bg-natural-light dark:bg-natural-dark min-h-screen">
       
       {/* Header */}
       <header className="flex items-center px-4 py-4 bg-natural-light/50 dark:bg-natural-dark/50 backdrop-blur-md">

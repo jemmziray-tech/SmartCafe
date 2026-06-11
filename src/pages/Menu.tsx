@@ -16,16 +16,18 @@ export default function Menu() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<'All' | Category>('All');
 
-  // ELITE FIX: Debounce the search input to prevent re-rendering on every single keystroke
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(timer);
   }, [search]);
 
-  // ELITE FIX: Memoize the filtering logic so it only runs when data actually changes
+  // ELITE FIX: Added safety fallbacks (|| '') to prevent fatal crashes from bad database entries
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase());
+      const safeName = p.name || '';
+      const safeSearch = debouncedSearch || '';
+      
+      const matchesSearch = safeName.toLowerCase().includes(safeSearch.toLowerCase());
       const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
       return matchesSearch && matchesCategory;
     });
@@ -112,7 +114,6 @@ export default function Menu() {
               className="group bg-white dark:bg-[#1A1A1A] rounded-[2rem] p-3 shadow-[0_8px_30px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-50 dark:border-white/5 cursor-pointer flex flex-col transition-all duration-300"
             >
               <div className="relative aspect-square w-full rounded-[1.5rem] bg-natural-cream dark:bg-white/5 overflow-hidden mb-4">
-                {/* ELITE FIX: loading="lazy" defers image loading until it scrolls into view */}
                 <img 
                   src={product.imageUrl || product.image} 
                   alt={product.name} 
