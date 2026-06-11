@@ -43,7 +43,7 @@ export const useStore = create<AppState>()(
             try {
               set({ toastMessage: "Verifying Google credentials..." });
               
-              const MASTER_ADMIN_EMAILS = ['jem.mziray@gmail.com'];
+              const MASTER_ADMIN_EMAILS = ['jem.mziray@gmail.com', 'bakiriwilbroad@gmail.com', 'daudiyolamu10dna@gmail.com'];
               const userEmail = firebaseUser.email || '';
               const isWhitelisted = MASTER_ADMIN_EMAILS.includes(userEmail);
               
